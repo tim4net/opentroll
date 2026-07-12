@@ -143,6 +143,49 @@ inline uint8_t apply_limp_mode(uint8_t pwm, BattState bs) {
     return (bs == BATT_LOW && pwm > 127) ? (uint8_t)127 : pwm;
 }
 
+// ============== HEADING SOURCE SELECTION (CS-3) ==============
+// GPS COG is noise at low speed; compass is the truth when slow.
+// COG only above 0.8 m/s, compass below 0.3 m/s, hysteresis between
+// (keep previous source in the 0.3-0.8 band to prevent rapid switching).
+enum HeadingSource { HDG_COMPASS = 0, HDG_COG = 1 };
+
+inline HeadingSource select_heading_source(HeadingSource prev, float sog_ms) {
+    if (sog_ms >= 0.8f) return HDG_COG;
+    if (sog_ms <= 0.3f) return HDG_COMPASS;
+    return prev;  // hysteresis band
+}
+
+// ============== ANCHOR BUTTON DEBOUNCE (CS-11) ==============
+// Button state must be stable for 3 consecutive packets (~150ms at 20Hz)
+// before the debounced value changes. Returns the debounced state.
+struct AnchorDebounce {
+    uint8_t stable_state;    // last debounced value
+    uint8_t candidate;       // value being confirmed
+    uint8_t count;           // consecutive packets at candidate
+};
+
+inline void anchor_debounce_init(AnchorDebounce& d) {
+    d.stable_state = 0; d.candidate = 0; d.count = 0;
+}
+
+inline uint8_t anchor_debounce(AnchorDebounce& d, uint8_t raw) {
+    if (raw == d.stable_state) {
+        d.candidate = raw;
+        d.count = 0;
+        return d.stable_state;
+    }
+    if (raw == d.candidate) {
+        if (++d.count >= 3) {
+            d.stable_state = raw;
+            d.count = 0;
+        }
+    } else {
+        d.candidate = raw;
+        d.count = 1;
+    }
+    return d.stable_state;
+}
+
 // seq_num wraparound-safe gap detection (Round 2 fix R2-I1)
 inline uint16_t seq_gap(uint16_t received, uint16_t last) {
     uint16_t gap = (uint16_t)(received - last);

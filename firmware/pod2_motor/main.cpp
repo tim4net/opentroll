@@ -184,6 +184,8 @@ uint32_t gps_last_fix = 0;
 // Spot-lock target
 float anchor_lat = 0, anchor_lon = 0;
 bool spot_lock_active = false;
+AnchorDebounce anchor_db;
+uint8_t anchor_prev_stable = 0;
 
 // Battery
 float battery_voltage = 13.2;
@@ -195,13 +197,33 @@ uint32_t last_telem_tx = 0;
 uint16_t telem_seq = 0;
 
 // ============== SPOT-LOCK ==============
-void spot_lock_loop() {
-  if (gps_sats < 4 || gps_hdop > 4.0) {
-    // GPS unreliable — throttle to 0, warn
-    drive_forward(0);
+// CS-2: GPS-stale handling. Throttle to 0 immediately; if quality isn't
+// restored within 10s, drop back to MANUAL (the operator regains control
+// instead of the boat silently idling on a dead anchor).
+static uint32_t gps_stale_since = 0;
+// CS-3: heading source with hysteresis
+static HeadingSource heading_source = HDG_COMPASS;
+// Compass heading from Pod 1 (sent in every control packet)
+static float remote_compass_heading = 0;
+
+// Returns false when spot-lock should exit to MANUAL
+bool spot_lock_loop() {
+  bool gps_ok = (gps_sats >= 4) && (gps_hdop <= 4.0f) &&
+                (millis() - gps_last_fix <= 2000);
+
+  if (!gps_ok) {
+    // GPS unreliable — cut throttle NOW, start/continue the 10s clock
+    kill_motor_pwm();
+    current_pwm = 0;               // soft-start must ramp from 0 on recovery
     error_code = ERR_GPS_STALE;
-    return;
+    if (gps_stale_since == 0) gps_stale_since = millis();
+    if (millis() - gps_stale_since > 10000) {
+      gps_stale_since = 0;
+      return false;                // CS-2: exit to MANUAL after 10s
+    }
+    return true;
   }
+  gps_stale_since = 0;
 
   // Position relative to anchor
   LocalPos pos = to_local(anchor_lat, anchor_lon, gps_lat, gps_lon);
@@ -209,13 +231,24 @@ void spot_lock_loop() {
   float bearing_from_anchor = local_bearing(pos);
   float desired_heading = normalize_heading(bearing_from_anchor + 180.0f);
 
+  // CS-3: COG above 0.8 m/s, compass below 0.3 m/s, hysteresis between.
+  // Reset PID derivative state on source switch to avoid a kick.
+  HeadingSource new_source = select_heading_source(heading_source, gps_sog);
+  if (new_source != heading_source) {
+    heading_pid.prev_error = 0;
+    heading_source = new_source;
+  }
+  float current_heading = (heading_source == HDG_COG) ? gps_cog
+                                                      : remote_compass_heading;
+
   // Dead band
   if (dist < 2.0f) {
-    drive_forward(0);
+    kill_motor_pwm();
+    current_pwm = 0;
     // Freeze integral in dead band
-    float herr = heading_error(desired_heading, gps_cog);
+    float herr = heading_error(desired_heading, current_heading);
     pid_compute(heading_pid, herr, true);
-    return;
+    return true;
   }
 
   error_code = ERR_OK;
@@ -223,11 +256,11 @@ void spot_lock_loop() {
   // Throttle proportional to distance, capped at 35%
   float throttle_pct = fminf(dist * 0.05f, 0.35f);
   uint8_t target_pwm = (uint8_t)(throttle_pct * 255.0f);
+  target_pwm = apply_limp_mode(target_pwm, batt_monitor.state);
   target_pwm = soft_start(target_pwm, current_pwm);
   current_pwm = target_pwm;
 
   // Heading PID → steering
-  float current_heading = gps_cog;  // Use COG when moving
   float herr = heading_error(desired_heading, current_heading);
   float steer_cmd = pid_compute(heading_pid, herr, false);
 
@@ -237,6 +270,7 @@ void spot_lock_loop() {
 
   // Drive motor forward
   drive_forward(current_pwm);
+  return true;
 }
 
 // ============== MANUAL MODE ==============
@@ -391,6 +425,7 @@ void setup() {
 
   // PID init
   pid_init(heading_pid, 2.0f, 0.1f, 0.5f, 500.0f);
+  anchor_debounce_init(anchor_db);
 
   // ESP-NOW init (simplified — real version loads peer + keys from NVS)
   WiFi.mode(WIFI_STA);
@@ -498,9 +533,12 @@ void loop() {
       if (!rf_link_active()) break;
       ControlPacket ctrl = get_latest_packet();
       if (!verify_checksum(ctrl)) break;
+      remote_compass_heading = (float)ctrl.heading_raw;
 
-      // Check for spot-lock activation
-      if (ctrl.anchor_btn && !spot_lock_active && gps_sats >= 4) {
+      // Spot-lock engagement: debounced rising edge (CS-11) + GPS quality
+      uint8_t anchor_stable = anchor_debounce(anchor_db, ctrl.anchor_btn);
+      if (anchor_stable && !anchor_prev_stable && !spot_lock_active &&
+          gps_sats >= 4) {
         anchor_lat = gps_lat;
         anchor_lon = gps_lon;
         spot_lock_active = true;
@@ -510,6 +548,7 @@ void loop() {
       } else {
         manual_loop(ctrl);
       }
+      anchor_prev_stable = anchor_stable;
       break;
     }
 
@@ -518,6 +557,7 @@ void loop() {
       if (rf_link_active()) {
         ControlPacket ctrl = get_latest_packet();
         if (verify_checksum(ctrl)) {
+          remote_compass_heading = (float)ctrl.heading_raw;
           uint16_t center = 2048;
           uint16_t deadzone = 100;
           if (abs(ctrl.steering_raw - center) > deadzone ||
@@ -528,21 +568,23 @@ void loop() {
             Serial.println("Panic override — back to manual");
             break;
           }
+          // Anchor button toggle off (debounced)
+          if (anchor_debounce(anchor_db, ctrl.anchor_btn) == 0) {
+            spot_lock_active = false;
+            current_state = STATE_MANUAL;
+            Serial.println("Spot-lock disengaged");
+            break;
+          }
         }
       }
 
-      // Check for anchor button toggle off
-      if (rf_link_active()) {
-        ControlPacket ctrl = get_latest_packet();
-        if (verify_checksum(ctrl) && !ctrl.anchor_btn) {
-          spot_lock_active = false;
-          current_state = STATE_MANUAL;
-          Serial.println("Spot-lock disengaged");
-          break;
-        }
+      // CS-2: spot_lock_loop returns false when GPS has been stale >10s
+      if (!spot_lock_loop()) {
+        spot_lock_active = false;
+        current_pwm = 0;
+        current_state = STATE_MANUAL;
+        Serial.println("GPS lost >10s — spot-lock exit to manual");
       }
-
-      spot_lock_loop();
       break;
     }
 
