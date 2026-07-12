@@ -52,11 +52,48 @@ static portMUX_TYPE pkt_spinlock = portMUX_INITIALIZER_UNLOCKED;
 static volatile bool pkt_new = false;
 static uint32_t last_packet_rx = 0;
 
+// CS-10: only accept packets from the paired Pod 1 controller.
+// Set to your Pod 1 MAC at pairing/flash time (real version loads from NVS).
+// {0,0,0,0,0,0} = unpaired: REJECT EVERYTHING until pairing is configured —
+// fail closed, not open.
+static uint8_t paired_pod1_mac[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+static uint16_t last_seq_num = 0;
+static bool seq_initialized = false;
+static uint32_t rejected_packets = 0;
+
+// CS-10: range-check every field before use
+static bool packet_fields_valid(const ControlPacket& p) {
+  if (p.speed_raw > 4095) return false;
+  if (p.steering_raw > 4095) return false;
+  if (p.direction > DIR_REVERSE) return false;   // 0,1,2 only
+  if (p.anchor_btn > 1) return false;
+  if (p.heading_raw > 359) return false;
+  if (p.ctrl_batt_pct > 100) return false;
+  return true;
+}
+
 // ESP-NOW receive callback
 void on_recv(const uint8_t *mac, const uint8_t *data, int len) {
-  if (len != sizeof(ControlPacket)) return;
+  if (len != sizeof(ControlPacket)) { rejected_packets++; return; }
+
+  // Sender MAC filter (CS-10) — fail closed when unpaired
+  if (memcmp(mac, paired_pod1_mac, 6) != 0) { rejected_packets++; return; }
+
+  ControlPacket incoming;
+  memcpy(&incoming, data, sizeof(ControlPacket));
+
+  // Validate BEFORE accepting: checksum, field ranges, replay
+  if (!verify_checksum(incoming)) { rejected_packets++; return; }
+  if (!packet_fields_valid(incoming)) { rejected_packets++; return; }
+  if (seq_initialized && !seq_is_newer(incoming.seq_num, last_seq_num)) {
+    rejected_packets++;  // stale or replayed packet
+    return;
+  }
+  last_seq_num = incoming.seq_num;
+  seq_initialized = true;
+
   portENTER_CRITICAL(&pkt_spinlock);
-  memcpy(&pkt_latest, data, sizeof(ControlPacket));
+  memcpy(&pkt_latest, &incoming, sizeof(ControlPacket));
   pkt_new = true;
   portEXIT_CRITICAL(&pkt_spinlock);
   last_packet_rx = millis();
@@ -354,10 +391,20 @@ void setup() {
   // PID init
   pid_init(heading_pid, 2.0f, 0.1f, 0.5f, 500.0f);
 
-  // ESP-NOW init (simplified — real version loads peer from NVS)
+  // ESP-NOW init (simplified — real version loads peer + keys from NVS)
   WiFi.mode(WIFI_STA);
   esp_now_init();
   esp_now_register_recv_cb(on_recv);
+  // Register paired Pod 1 as the only peer. When ESP-NOW encryption is
+  // enabled (LMK/PMK set at pairing), packets from unknown/unencrypted
+  // senders are dropped by the radio; the MAC filter in on_recv is the
+  // software backstop.
+  esp_now_peer_info_t peer;
+  memset(&peer, 0, sizeof(peer));
+  memcpy(peer.peer_addr, paired_pod1_mac, 6);
+  peer.channel = 0;
+  peer.encrypt = false;  // TODO(pairing): set true + LMK once NVS pairing lands
+  esp_now_add_peer(&peer);
 
   // POST
   if (run_post()) {
