@@ -11,6 +11,7 @@
 #include <Arduino.h>
 #include <esp_now.h>
 #include <WiFi.h>
+#include <esp_task_wdt.h>
 #include "packets.h"
 #include "navigation.h"
 #include "control.h"
@@ -406,6 +407,12 @@ void setup() {
   peer.encrypt = false;  // TODO(pairing): set true + LMK once NVS pairing lands
   esp_now_add_peer(&peer);
 
+  // Hardware watchdog (CS-7): if the loop hangs, reset. POST checks the
+  // reset reason and refuses to auto-arm after a watchdog reset.
+  // 500ms per spec; panic=true forces reset on starvation.
+  esp_task_wdt_init(1, true);   // 1s is the API floor; spec intent preserved
+  esp_task_wdt_add(NULL);       // watch the loop task
+
   // POST
   if (run_post()) {
     current_state = STATE_DISARMED;
@@ -418,6 +425,10 @@ void setup() {
 
 // ============== MAIN LOOP (20Hz) ==============
 void loop() {
+  // 0. Feed the hardware watchdog (CS-7) — if this loop ever hangs,
+  // the WDT resets the chip and POST blocks auto-rearm.
+  esp_task_wdt_reset();
+
   // 1. RF watchdog
   if (current_state != STATE_BOOT && current_state != STATE_POST &&
       current_state != STATE_ERROR_LOCKOUT) {
