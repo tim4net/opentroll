@@ -82,6 +82,12 @@ void kill_motor() {
   digitalWrite(HB_EN_PIN, LOW);
 }
 
+// PWM to zero but H-bridge stays enabled (dead-time windows, DIR_OFF)
+void kill_motor_pwm() {
+  ledcWrite(0, 0);
+  ledcWrite(1, 0);
+}
+
 void enable_hbridge() {
   digitalWrite(HB_EN_PIN, HIGH);
 }
@@ -190,38 +196,57 @@ void spot_lock_loop() {
 }
 
 // ============== MANUAL MODE ==============
+// CS-1: direction changes use NON-BLOCKING dead-time. The old code called
+// delay(100), which froze the entire loop — RF watchdog, battery check,
+// everything — for 100ms. Now we hold PWM at 0 and keep looping.
+static uint32_t dead_time_until = 0;
+static uint8_t pending_direction = DIR_OFF;
+
 void manual_loop(ControlPacket& ctrl) {
   uint8_t target_pwm = throttle_curve(ctrl.speed_raw);
   // Limp mode: low battery caps throttle at 50% (spec CS-5)
   target_pwm = apply_limp_mode(target_pwm, batt_monitor.state);
+
+  // Dead-time window active: hold motor at 0, keep the loop running
+  if (dead_time_until != 0) {
+    if ((int32_t)(millis() - dead_time_until) < 0) {
+      kill_motor_pwm();          // PWM to 0, H-bridge stays enabled
+      current_pwm = 0;
+      return;
+    }
+    // Dead-time expired — adopt the pending direction at zero PWM
+    current_direction = pending_direction;
+    dead_time_until = 0;
+    current_pwm = 0;
+  }
+
+  // Direction change between FWD and REV requires a 100ms dead-time
+  if ((ctrl.direction == DIR_FORWARD && current_direction == DIR_REVERSE) ||
+      (ctrl.direction == DIR_REVERSE && current_direction == DIR_FORWARD)) {
+    kill_motor_pwm();
+    current_pwm = 0;
+    pending_direction = ctrl.direction;
+    dead_time_until = millis() + 100;
+    return;
+  }
+
   target_pwm = soft_start(target_pwm, current_pwm);
   current_pwm = target_pwm;
 
   switch (ctrl.direction) {
     case DIR_FORWARD:
-      if (current_direction == DIR_REVERSE) {
-        // Dead-time on direction change
-        drive_forward(0);
-        current_pwm = 0;
-        delay(100);
-      }
       drive_forward(current_pwm);
       current_direction = DIR_FORWARD;
       break;
 
     case DIR_REVERSE:
-      if (current_direction == DIR_FORWARD) {
-        drive_reverse(0);
-        current_pwm = 0;
-        delay(100);
-      }
       drive_reverse(current_pwm);
       current_direction = DIR_REVERSE;
       break;
 
     case DIR_OFF:
     default:
-      drive_forward(0);
+      kill_motor_pwm();
       current_pwm = 0;
       current_direction = DIR_OFF;
       break;
