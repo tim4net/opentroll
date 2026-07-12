@@ -393,16 +393,39 @@ void loop() {
   // 3. State machine
   switch (current_state) {
     case STATE_DISARMED: {
-      // Wait for RF link, then arm with 2s delay
-      if (rf_link_active()) {
-        static uint32_t arm_timer = 0;
-        if (arm_timer == 0) arm_timer = millis();
-        if (millis() - arm_timer > 2000) {
-          enable_hbridge();
-          current_state = STATE_MANUAL;
-          Serial.println("ARMED — Manual mode");
-          arm_timer = 0;
-        }
+      // CS-4 + zero-throttle interlock. Arming requires ALL of:
+      //   - 2s of CONTINUOUS RF (any gap >100ms resets the timer)
+      //   - direction switch at OFF
+      //   - speed dial at zero (below throttle dead zone)
+      // Without the throttle interlock, an RF drop + recovery would relaunch
+      // the boat at whatever the speed dial was left at.
+      static uint32_t arm_timer = 0;
+
+      if (!rf_link_active()) {
+        arm_timer = 0;
+        break;
+      }
+      // Any RF gap > 100ms during arming resets the timer (CS-4)
+      if (millis() - last_packet_rx > 100) {
+        arm_timer = 0;
+      }
+
+      ControlPacket ctrl = get_latest_packet();
+      if (!verify_checksum(ctrl) ||
+          ctrl.direction != DIR_OFF ||
+          throttle_curve(ctrl.speed_raw) != 0) {
+        arm_timer = 0;   // controls not safe — restart the clock
+        break;
+      }
+
+      if (arm_timer == 0) arm_timer = millis();
+      if (millis() - arm_timer > 2000) {
+        enable_hbridge();
+        current_state = STATE_MANUAL;
+        current_pwm = 0;
+        current_direction = DIR_OFF;
+        Serial.println("ARMED — Manual mode (throttle zero, direction OFF)");
+        arm_timer = 0;
       }
       break;
     }
