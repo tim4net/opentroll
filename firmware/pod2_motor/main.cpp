@@ -98,31 +98,37 @@ void disable_hbridge() {
   ledcWrite(1, 0);
 }
 
-void drive_forward(uint8_t duty) {
-  // GUARANTEE: LPWM is 0 before RPWM goes high
-  ledcWrite(1, 0);
-  delayMicroseconds(10);
-  ledcWrite(0, duty);
-
-  // Firmware assertion — shoot-through check
-  if (ledcRead(0) > 0 && ledcRead(1) > 0) {
-    kill_motor();
-    current_state = STATE_ERROR;
-    error_code = ERR_SHOOT_THROUGH;
+// Single gate for all propulsion drive. Shoot-through prevention is
+// structural: one code path, one direction at a time, opposite side always
+// zeroed first with settle time.
+//
+// NOTE (honesty): firmware cannot DETECT hardware shoot-through. The old
+// code read back ledcRead() after writing — that only reflects the duty
+// registers we just wrote and can never observe gate/driver faults. Real
+// shoot-through protection is electrical (the BTS7960 has interlocked
+// half-bridges per side; dead-time here protects the motor/wiring on
+// direction reversal). The fake check has been removed.
+void drive_motor(uint8_t direction, uint8_t duty) {
+  switch (direction) {
+    case DIR_FORWARD:
+      ledcWrite(1, 0);           // opposite side to 0 first
+      delayMicroseconds(10);     // driver settle
+      ledcWrite(0, duty);
+      break;
+    case DIR_REVERSE:
+      ledcWrite(0, 0);
+      delayMicroseconds(10);
+      ledcWrite(1, duty);
+      break;
+    default:                     // DIR_OFF or anything unexpected
+      ledcWrite(0, 0);
+      ledcWrite(1, 0);
+      break;
   }
 }
 
-void drive_reverse(uint8_t duty) {
-  ledcWrite(0, 0);
-  delayMicroseconds(10);
-  ledcWrite(1, duty);
-
-  if (ledcRead(0) > 0 && ledcRead(1) > 0) {
-    kill_motor();
-    current_state = STATE_ERROR;
-    error_code = ERR_SHOOT_THROUGH;
-  }
-}
+void drive_forward(uint8_t duty) { drive_motor(DIR_FORWARD, duty); }
+void drive_reverse(uint8_t duty) { drive_motor(DIR_REVERSE, duty); }
 
 // ============== GLOBALS ==============
 uint8_t current_pwm = 0;
