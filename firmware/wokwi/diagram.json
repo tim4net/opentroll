@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "author": "Tim",
+  "editor": "wokwi",
+  "parts": [
+    {"type": "board-esp32-c3-devkitm-1", "id": "esp", "top": 0, "left": 0, "attrs": {}},
+    {"type": "wokwi-ssd1306", "id": "oled", "top": -140, "left": 220, "attrs": {}},
+    {"type": "wokwi-potentiometer", "id": "speedPot", "top": 40, "left": 280, "attrs": {"label": "SPEED"}},
+    {"type": "wokwi-potentiometer", "id": "steerPot", "top": 40, "left": -180, "attrs": {"label": "STEER"}},
+    {"type": "wokwi-pushbutton", "id": "anchorBtn", "top": -80, "left": 140, "attrs": {"label": "ANCHOR", "color": "blue"}},
+    {"type": "wokwi-led", "id": "anchorLed", "top": -80, "left": 200, "attrs": {"color": "blue", "label": "ANCHOR LED"}},
+    {"type": "wokwi-slide-switch", "id": "dirSwitch", "top": -140, "left": -120, "attrs": {"label": "FWD/OFF/REV"}}
+  ],
+  "connections": [
+    ["esp:GND", "oled:GND", "black", []],
+    ["esp:3V3", "oled:VCC", "red", []],
+    ["esp:8", "oled:SDA", "blue", []],
+    ["esp:9", "oled:SCL", "yellow", []],
+    ["esp:GND", "speedPot:GND", "black", []],
+    ["esp:3V3", "speedPot:VCC", "red", []],
+    ["esp:2", "speedPot:SIG", "green", []],
+    ["esp:GND", "steerPot:GND", "black", []],
+    ["esp:3V3", "steerPot:VCC", "red", []],
+    ["esp:3", "steerPot:SIG", "green", []],
+    ["esp:GND", "anchorBtn:2.r", "black", []],
+    ["esp:6", "anchorBtn:1.l", "blue", []],
+    ["esp:7", "anchorLed:A", "blue", []],
+    ["esp:GND", "anchorLed:C", "black", []],
+    ["esp:4", "dirSwitch:1", "orange", []],
+    ["esp:GND", "dirSwitch:2", "black", []],
+    ["esp:5", "dirSwitch:3", "orange", []]
+  ],
+  "dependencies": {}
+}
