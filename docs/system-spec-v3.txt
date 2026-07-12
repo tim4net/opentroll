@@ -8,12 +8,12 @@ Pi Zero 2W companion computer included.
 
 12V LiFePO4 50Ah battery
   → Blue Sea 6006 battery disconnect switch (ABYC E-11.10.1)
-    → 50A MRBF marine fuse (within 7" of battery)
+    → Blue Sea 7050 50A THERMAL CIRCUIT BREAKER (within 7" of battery, resettable)
       → Main bus bar
 
-Main bus splits into THREE independently fused branches:
+Main bus splits into THREE independently fused (resettable) branches:
 
-  Branch 1 — MOTOR (40A fuse, 8 AWG):
+  Branch 1 — MOTOR (Blue Sea 7030 40A THERMAL BREAKER, 8 AWG):
     → Monostable DC contactor (normally-open, 75A continuous, 12V coil)
       NOTE: NOT latching. Coil held closed by lanyard circuit. Opens on lanyard pull.
       Flyback protection: TVS diode SMBJ24A across coil (faster release than 1N4007 —
@@ -23,7 +23,7 @@ Main bus splits into THREE independently fused branches:
     → IBT-2 BTS7960 B+/B-
     → Motor
 
-  Branch 2 — ELECTRONICS (3A fuse, 18 AWG):
+  Branch 2 — ELECTRONICS (3A BLADE RESET FUSE, 18 AWG):
     → MP1584 buck converter (12V→5V, set to 5.0V)
       (Upgrade to LM2596 or MP2307 for better transient response)
     → Schottky diode 1N5817 (0.32V drop — was SS34 at 0.55V, too much)
@@ -32,12 +32,12 @@ Main bus splits into THREE independently fused branches:
     → NEO-M8N GPS VCC (5V)
     → AS5600 VCC (3.3V from ESP32 3.3V pin)
 
-  Branch 3 — STEERING ACTUATOR (3A fuse, 18 AWG):
+  Branch 3 — STEERING ACTUATOR (3A BLADE RESET FUSE, 18 AWG):
     → DRV8871 H-bridge VIN (12V direct from bus)
       100µF electrolytic + 0.1µF ceramic at DRV8871 VIN terminals
     → DRV8871 OUT1/OUT2 → linear actuator
 
-  Branch 4 — Pi ZERO (3A fuse, 18 AWG):
+  Branch 4 — Pi ZERO (3A BLADE RESET FUSE, 18 AWG):
     → Separate 5V buck converter (or tap Branch 2 if current budget allows)
     → Pi Zero 2W micro-USB power
     → 5" display power (from Pi GPIO 5V pins)
@@ -266,12 +266,14 @@ Critical fixes applied:
 
 | Location | Rating | Type | Wire |
 |----------|--------|------|------|
-| Battery main | 50A | MRBF marine | 8 AWG |
-| Motor branch | 40A | ANL or MRBF | 8 AWG |
-| Electronics branch | 3A | ATO blade | 18 AWG |
-| Steering actuator branch | 3A | ATO blade | 18 AWG |
-| Pi Zero branch | 3A | ATO blade | 18 AWG |
-| Pod 1 18650 | 2A | Polyfuse | 22 AWG |
+| Battery main | 50A | Blue Sea 7050 thermal breaker (resettable) | 8 AWG |
+| Motor branch | 40A | Blue Sea 7030 thermal breaker (resettable) | 8 AWG |
+| Electronics branch | 3A | Blade reset fuse (manual reset) | 18 AWG |
+| Steering actuator branch | 3A | Blade reset fuse (manual reset) | 18 AWG |
+| Pi Zero branch | 3A | Blade reset fuse (manual reset) | 18 AWG |
+| Pod 1 18650 | 2A | PTC polyfuse (auto-reset) | 22 AWG |
+
+All protection is resettable — no spare fuses needed on the water.
 
 === ENCLOSURE ===
 
