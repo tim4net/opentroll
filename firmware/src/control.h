@@ -155,6 +155,33 @@ inline HeadingSource select_heading_source(HeadingSource prev, float sog_ms) {
     return prev;  // hysteresis band
 }
 
+// ============== ESC THERMAL PROTECTION (spec: warn 80, derate 85, kill 90) ==============
+// Hysteresis: recoverable cool-down at 75°C (spec CS-6 'cools below 75°C').
+enum TempState { TEMP_OK = 0, TEMP_WARN = 1, TEMP_DERATE = 2, TEMP_KILL = 3 };
+
+inline TempState temp_state_update(TempState prev, float temp_c) {
+    switch (prev) {
+        case TEMP_KILL:
+            // Latched until cooled below 75°C (caller re-arms via DISARMED)
+            return (temp_c < 75.0f) ? TEMP_OK : TEMP_KILL;
+        case TEMP_DERATE:
+            if (temp_c >= 90.0f) return TEMP_KILL;
+            return (temp_c < 80.0f) ? TEMP_OK : TEMP_DERATE;   // 5°C hysteresis
+        default:
+            if (temp_c >= 90.0f) return TEMP_KILL;
+            if (temp_c >= 85.0f) return TEMP_DERATE;
+            if (temp_c >= 80.0f) return TEMP_WARN;
+            return TEMP_OK;
+    }
+}
+
+// Derate: cap throttle at 50% while hot
+inline uint8_t apply_temp_derate(uint8_t pwm, TempState ts) {
+    if (ts == TEMP_KILL) return 0;
+    if (ts == TEMP_DERATE && pwm > 127) return 127;
+    return pwm;
+}
+
 // ============== ANCHOR BUTTON DEBOUNCE (CS-11) ==============
 // Button state must be stable for 3 consecutive packets (~150ms at 20Hz)
 // before the debounced value changes. Returns the debounced state.

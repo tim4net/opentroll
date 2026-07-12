@@ -192,6 +192,10 @@ float battery_voltage = 13.2;
 BattFilter batt_filter;
 BattMonitor batt_monitor;
 
+// ESC thermal
+TempState esc_temp_state = TEMP_OK;
+float esc_temp_c = 25.0f;
+
 // Telemetry
 uint32_t last_telem_tx = 0;
 uint16_t telem_seq = 0;
@@ -257,6 +261,7 @@ bool spot_lock_loop() {
   float throttle_pct = fminf(dist * 0.05f, 0.35f);
   uint8_t target_pwm = (uint8_t)(throttle_pct * 255.0f);
   target_pwm = apply_limp_mode(target_pwm, batt_monitor.state);
+  target_pwm = apply_temp_derate(target_pwm, esc_temp_state);
   target_pwm = soft_start(target_pwm, current_pwm);
   current_pwm = target_pwm;
 
@@ -284,6 +289,8 @@ void manual_loop(ControlPacket& ctrl) {
   uint8_t target_pwm = throttle_curve(ctrl.speed_raw);
   // Limp mode: low battery caps throttle at 50% (spec CS-5)
   target_pwm = apply_limp_mode(target_pwm, batt_monitor.state);
+  // Thermal derate: 50% cap at 85°C, kill at 90°C (README layer 8)
+  target_pwm = apply_temp_derate(target_pwm, esc_temp_state);
 
   // Dead-time window active: hold motor at 0, keep the loop running
   if (dead_time_until != 0) {
@@ -333,6 +340,41 @@ void manual_loop(ControlPacket& ctrl) {
   // Steering: proportional actuator control from spring-return pot
   // Map ADC center (2048) ± deadzone to actuator drive
   // TODO: implement with AS5600 feedback
+}
+
+// ============== ESC THERMAL MONITORING ==============
+// NOTE: spec v3 calls for a DS18B20 on GPIO4 (1-Wire); the original pin
+// map here has an analog thermistor on GPIO36. Until that discrepancy is
+// resolved in hardware, we read the analog pin (10k NTC divider assumed).
+// Calibrate B-constant for your thermistor before trusting absolute values;
+// thresholds err conservative.
+float read_esc_temp() {
+  // 10k NTC (B=3950) with 10k divider to 3.3V on ESC_TEMP
+  uint16_t raw = analogRead(ESC_TEMP);
+  if (raw == 0 || raw >= 4095) return esc_temp_c;  // open/short — hold last
+  float v = (float)raw * 3.3f / 4095.0f;
+  float r_ntc = 10000.0f * v / (3.3f - v);
+  float t_k = 1.0f / (1.0f / 298.15f + logf(r_ntc / 10000.0f) / 3950.0f);
+  return t_k - 273.15f;
+}
+
+void check_esc_temp() {
+  esc_temp_c = read_esc_temp();
+  TempState prev = esc_temp_state;
+  esc_temp_state = temp_state_update(esc_temp_state, esc_temp_c);
+  if (esc_temp_state == TEMP_KILL && prev != TEMP_KILL) {
+    kill_motor();
+    error_code = ERR_ESC_OVERTEMP;
+    if (current_state == STATE_MANUAL || current_state == STATE_SPOT_LOCK) {
+      current_state = STATE_ERROR;
+    }
+  }
+  // Recoverable per CS-6: cooled below 75°C → DISARMED (manual re-arm)
+  if (prev == TEMP_KILL && esc_temp_state == TEMP_OK &&
+      current_state == STATE_ERROR && error_code == ERR_ESC_OVERTEMP) {
+    current_state = STATE_DISARMED;
+    disable_hbridge();
+  }
 }
 
 // ============== BATTERY MONITORING ==============
@@ -487,6 +529,13 @@ void loop() {
       batt_state != BATT_CRITICAL) {
     current_state = STATE_DISARMED;
     disable_hbridge();
+  }
+
+  // 2b. ESC thermal check (1Hz — thermal time constants are slow)
+  static uint32_t last_temp_check = 0;
+  if (millis() - last_temp_check >= 1000) {
+    check_esc_temp();
+    last_temp_check = millis();
   }
 
   // 3. State machine
