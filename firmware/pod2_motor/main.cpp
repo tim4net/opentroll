@@ -137,6 +137,8 @@ bool spot_lock_active = false;
 
 // Battery
 float battery_voltage = 13.2;
+BattFilter batt_filter;
+BattMonitor batt_monitor;
 
 // Telemetry
 uint32_t last_telem_tx = 0;
@@ -190,6 +192,8 @@ void spot_lock_loop() {
 // ============== MANUAL MODE ==============
 void manual_loop(ControlPacket& ctrl) {
   uint8_t target_pwm = throttle_curve(ctrl.speed_raw);
+  // Limp mode: low battery caps throttle at 50% (spec CS-5)
+  target_pwm = apply_limp_mode(target_pwm, batt_monitor.state);
   target_pwm = soft_start(target_pwm, current_pwm);
   current_pwm = target_pwm;
 
@@ -230,23 +234,18 @@ void manual_loop(ControlPacket& ctrl) {
 
 // ============== BATTERY MONITORING ==============
 float read_battery_voltage() {
-  // Voltage divider: 100kΩ + 33kΩ on GPIO34 (ADC1)
-  // ADC reading × 4.03 × 3.3 / 4095 = battery voltage
+  // Voltage divider: 120kΩ (battery+) to 30kΩ (GND) on GPIO34 (ADC1) — spec v3.
+  // DO NOT revert to 100k/33k: that puts 3.62V on the ADC at 14.6V full charge.
   uint16_t raw = analogRead(BATT_SENSE);
-  float v = (float)raw * 4.03f * 3.3f / 4095.0f;
-  return v;
+  return batt_filter_update(batt_filter, adc_to_battery_voltage(raw));
 }
 
-bool check_battery() {
+BattState check_battery() {
   battery_voltage = read_battery_voltage();
-  if (battery_voltage < 10.5f) {
-    error_code = ERR_CRIT_BATTERY;
-    return false;
-  }
-  if (battery_voltage < 11.5f) {
-    error_code = ERR_LOW_BATTERY;
-  }
-  return true;
+  BattState bs = batt_monitor_update(batt_monitor, battery_voltage, millis());
+  if (bs == BATT_CRITICAL)      error_code = ERR_CRIT_BATTERY;
+  else if (bs == BATT_LOW)      error_code = ERR_LOW_BATTERY;
+  return bs;
 }
 
 // ============== TELEMETRY ==============
@@ -278,8 +277,11 @@ void send_telemetry() {
 
 // ============== POST (Power-On Self-Test) ==============
 bool run_post() {
-  // Check battery
-  if (!check_battery()) return false;
+  // Prime the battery filter with a full window, then check
+  batt_filter_init(batt_filter);
+  batt_monitor_init(batt_monitor);
+  for (int i = 0; i < BATT_FILTER_LEN; i++) read_battery_voltage();
+  if (check_battery() == BATT_CRITICAL) return false;
 
   // Check reset reason — require re-arm after watchdog/brownout
   esp_reset_reason_t reason = esp_reset_reason();
@@ -347,12 +349,20 @@ void loop() {
     }
   }
 
-  // 2. Battery check (every cycle)
-  check_battery();
-  if (battery_voltage < 10.5f && current_state != STATE_ERROR_LOCKOUT) {
+  // 2. Battery check (every cycle) — hysteresis + latched critical (spec CS-5)
+  BattState batt_state = check_battery();
+  if (batt_state == BATT_CRITICAL &&
+      current_state != STATE_ERROR && current_state != STATE_ERROR_LOCKOUT) {
     kill_motor();
     current_state = STATE_ERROR;
     error_code = ERR_CRIT_BATTERY;
+  }
+  // Recovery: BattMonitor only leaves CRITICAL after >11.5V sustained 2s.
+  // Go to DISARMED (manual re-arm), never straight back to drive.
+  if (current_state == STATE_ERROR && error_code == ERR_CRIT_BATTERY &&
+      batt_state != BATT_CRITICAL) {
+    current_state = STATE_DISARMED;
+    disable_hbridge();
   }
 
   // 3. State machine
