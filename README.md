@@ -32,7 +32,7 @@ The gap OpenTroll fills:
 ```
 ┌──────────────────────┐                    ┌──────────────────────────┐
 │   POD 1              │    ESP-NOW         │   POD 2                  │
-│   Hip Controller     │    AES Encrypted   │   Stern Motor Brain      │
+│   Hip Controller     │    Auth + CRC      │   Stern Motor Brain      │
 │                      │    50-100 Hz       │                          │
 │  ┌────────────────┐  │   ◄────────────►   │  ┌────────────────────┐  │
 │  │ ESP32-C3       │  │                    │  │ ESP32              │  │
@@ -94,18 +94,32 @@ Mounts at the stern inside a waterproof box, close to the motor.
 
 OpenTroll is designed with **layered safety** — no single point of failure can cause a runaway boat.
 
-| Layer | What | How |
-|-------|------|-----|
-| 1 | Lanyard kill switch | Hardware contactor cuts all motor power. Clips to PFD. |
-| 2 | Direction switch | Center position = motor OFF (mechanical) |
-| 3 | RF timeout | No wireless packet for 500ms → motor stops |
-| 4 | Panic override | Touch steering dial during spot-lock → instant manual mode |
-| 5 | H-bridge enable | GPIO disable, defaults OFF at boot |
-| 6 | Shoot-through guard | Hardware + firmware interlock prevents H-bridge short circuit |
-| 7 | Low-voltage cutoff | Battery below 10.5V → motor stops |
-| 8 | Overtemperature | ESC above 90°C → motor stops |
-| 9 | Boot-state protection | Pull-down resistors ensure motor is OFF during ESP32 boot |
-| 10 | Power-on self-test | Verifies all subsystems before arming |
+**Status legend:** ✅ implemented in firmware · 🔩 hardware/electrical · 🚧 planned (not yet in firmware — do not rely on it)
+
+| Layer | What | How | Status |
+|-------|------|-----|--------|
+| 1 | Lanyard kill switch | Hardware contactor cuts all motor power. Clips to PFD. Wire-break = fail-safe (motor stops). | 🔩 |
+| 2 | Direction switch | Center position = motor OFF (mechanical) | 🔩 |
+| 3 | RF timeout | No valid packet for 500ms → motor stops | ✅ |
+| 4 | Panic override | Touch steering dial during spot-lock → instant manual mode | ✅ |
+| 5 | H-bridge enable | GPIO disable, defaults OFF at boot | ✅ 🔩 |
+| 6 | Shoot-through guard | **Hardware** interlock (BTS7960 half-bridges) + firmware single-gate drive with dead-time on reversal. Firmware cannot *detect* shoot-through — protection is structural + electrical. | ✅ 🔩 |
+| 7 | Low-voltage cutoff | Battery below 10.5V → motor stops; latched with 11.5V/2s recovery + 50% limp mode | ✅ |
+| 8 | Overtemperature | ESC: warn 80°C, derate 85°C, kill 90°C, recover below 75°C | ✅ |
+| 9 | Boot-state protection | Pull-down resistors ensure motor is OFF during ESP32 boot | ✅ 🔩 |
+| 10 | Power-on self-test | Battery + reset-reason checks; refuses auto-arm after watchdog/brownout | ✅ |
+| 11 | Arming interlock | Arms only after 2s continuous RF **with throttle at zero and direction OFF** | ✅ |
+| 12 | Hardware watchdog | Hung control loop → chip reset → stays disarmed | ✅ |
+| 13 | RF authentication | Paired-MAC filter + CRC + replay rejection. ESP-NOW AES pairing 🚧 | ✅ (MAC/replay) / 🚧 (AES) |
+| 14 | GPS-loss handling | Spot-lock cuts throttle on stale GPS, returns control to operator after 10s | ✅ |
+
+**Honest status note:** Pod 2 (motor brain) firmware implements the safety
+logic above. Still **planned / not yet implemented** and required before any
+real on-water use: GPS NMEA parsing, steering-actuator drive with AS5600
+feedback (spot-lock steers open-loop until then), telemetry TX, ESP-NOW AES
+encryption/pairing, and the Pod 1 controller transmit firmware (the current
+`pod1_controller/main.cpp` is the Wokwi **display simulator**, not a real
+transmitter). Do not put this on water expecting autonomous spot-lock yet.
 
 ## 🧠 Spot-Lock (GPS Anchor)
 
