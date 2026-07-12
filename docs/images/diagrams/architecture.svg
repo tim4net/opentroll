@@ -1,0 +1,70 @@
+<svg width="900" height="650" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#1a1a2e"/>
+  <defs>
+    <marker id="arr-red" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L0,10 L9,5 z" fill="#e74c3c"/></marker>
+    <marker id="arr-blue" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L0,10 L9,5 z" fill="#3498db"/></marker>
+    <marker id="arr-green" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L0,10 L9,5 z" fill="#27ae60"/></marker>
+  </defs>
+  <style>
+    text { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; fill: #ecf0f1; }
+    .title { font-size: 16px; font-weight: bold; }
+    .desc { font-size: 13px; fill: #bdc3c7; }
+    .lbl { font-size: 12px; fill: #bdc3c7; }
+  </style>
+
+  <!-- Pod 1 Battery -->
+  <rect x="50" y="70" width="230" height="40" rx="8" fill="#9b59b6"/>
+  <text x="165" y="95" text-anchor="middle" class="title">Pod 1: 18650 Battery (30hr)</text>
+
+  <!-- Pod 2 Power -->
+  <rect x="335" y="70" width="230" height="40" rx="8" fill="#9b59b6"/>
+  <text x="450" y="95" text-anchor="middle" class="title">12V from main battery</text>
+
+  <!-- POD 1 -->
+  <rect x="50" y="140" width="230" height="230" rx="12" fill="#2c3e50" stroke="#e74c3c" stroke-width="3"/>
+  <text x="165" y="170" text-anchor="middle" class="title" fill="#e74c3c">POD 1 — Hip Controller</text>
+  <text x="165" y="205" text-anchor="middle" class="desc">• ESP32-C3</text>
+  <text x="165" y="230" text-anchor="middle" class="desc">• Speed/Steering Dials</text>
+  <text x="165" y="255" text-anchor="middle" class="desc">• OLED Display</text>
+  <text x="165" y="280" text-anchor="middle" class="desc">• Compass</text>
+  <text x="165" y="305" text-anchor="middle" class="desc">• 18650 + USB-C</text>
+  <text x="165" y="330" text-anchor="middle" class="desc">• Clear IP67 Box</text>
+
+  <!-- POD 2 -->
+  <rect x="335" y="140" width="230" height="230" rx="12" fill="#2c3e50" stroke="#e74c3c" stroke-width="3"/>
+  <text x="450" y="170" text-anchor="middle" class="title" fill="#e74c3c">POD 2 — Stern Motor Brain</text>
+  <text x="450" y="205" text-anchor="middle" class="desc">• ESP32</text>
+  <text x="450" y="230" text-anchor="middle" class="desc">• IBT-2 43A H-Bridge</text>
+  <text x="450" y="255" text-anchor="middle" class="desc">• DRV8871 Actuator Driver</text>
+  <text x="450" y="280" text-anchor="middle" class="desc">• NEO-M8N GPS</text>
+  <text x="450" y="305" text-anchor="middle" class="desc">• AS5600 Encoder</text>
+  <text x="450" y="330" text-anchor="middle" class="desc">• IP67 Dry Box</text>
+
+  <!-- Pi Zero -->
+  <rect x="620" y="140" width="230" height="230" rx="12" fill="#2c3e50" stroke="#e74c3c" stroke-width="3"/>
+  <text x="735" y="170" text-anchor="middle" class="title" fill="#e74c3c">Pi Zero 2W</text>
+  <text x="735" y="205" text-anchor="middle" class="desc">• Web Server</text>
+  <text x="735" y="230" text-anchor="middle" class="desc">• Offline Maps</text>
+  <text x="735" y="255" text-anchor="middle" class="desc">• Spot Database</text>
+  <text x="735" y="280" text-anchor="middle" class="desc">• Data Logger</text>
+  <text x="735" y="305" text-anchor="middle" class="desc">• 5" Touchscreen</text>
+
+  <!-- Links -->
+  <path d="M 280 230 L 325 230" stroke="#e74c3c" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arr-red)"/>
+  <path d="M 325 245 L 280 245" stroke="#e74c3c" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arr-red)"/>
+  <text x="302" y="275" text-anchor="middle" class="lbl" fill="#e74c3c">ESP-NOW AES Encrypted 50-100Hz</text>
+
+  <path d="M 565 230 L 610 230" stroke="#3498db" stroke-width="2" marker-end="url(#arr-blue)"/>
+  <path d="M 610 245 L 565 245" stroke="#3498db" stroke-width="2" marker-end="url(#arr-blue)"/>
+  <text x="587" y="275" text-anchor="middle" class="lbl" fill="#3498db">UART Telemetry+Commands</text>
+
+  <!-- Power & Motor -->
+  <rect x="365" y="440" width="170" height="60" rx="8" fill="#27ae60"/>
+  <text x="450" y="475" text-anchor="middle" class="title">12V LiFePO4 50Ah</text>
+  <path d="M 450 440 L 450 380" stroke="#27ae60" stroke-width="3" marker-end="url(#arr-green)"/>
+  
+  <rect x="365" y="550" width="170" height="60" rx="8" fill="#27ae60"/>
+  <text x="450" y="585" text-anchor="middle" class="title">46lb Trolling Motor</text>
+  <path d="M 410 370 L 410 415 L 320 415 L 320 580 L 355 580" fill="none" stroke="#27ae60" stroke-width="3" marker-end="url(#arr-green)"/>
+  <text x="365" y="575" class="lbl">from IBT-2</text>
+</svg>

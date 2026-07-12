@@ -1,0 +1,150 @@
+<svg width="1000" height="750" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#1a1a2e"/>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L0,8 L7,4 z" fill="#ecf0f1"/></marker>
+    <marker id="arr-r" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L0,8 L7,4 z" fill="#e74c3c"/></marker>
+    <marker id="arr-b" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L0,8 L7,4 z" fill="#3498db"/></marker>
+    <marker id="arr-g" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L0,8 L7,4 z" fill="#f1c40f"/></marker>
+    
+    <g id="pulldown">
+      <line x1="0" y1="0" x2="0" y2="10" stroke="#ecf0f1" stroke-width="1.5"/>
+      <polyline points="-3,10 3,13 -3,16 3,19 -3,22 3,25 0,28" fill="none" stroke="#ecf0f1" stroke-width="1.5"/>
+      <line x1="0" y1="28" x2="0" y2="35" stroke="#ecf0f1" stroke-width="1.5"/>
+      <line x1="-5" y1="35" x2="5" y2="35" stroke="#ecf0f1" stroke-width="1.5"/>
+      <line x1="-3" y1="38" x2="3" y2="38" stroke="#ecf0f1" stroke-width="1.5"/>
+      <line x1="-1" y1="41" x2="1" y2="41" stroke="#ecf0f1" stroke-width="1.5"/>
+      <text x="8" y="20" font-size="10" fill="#ecf0f1">10kΩ</text>
+    </g>
+  </defs>
+  
+  <style>
+    text { font-family: 'Consolas', monospace; fill: #ecf0f1; font-size: 14px; }
+    .box { fill: #2c3e50; stroke: #bdc3c7; stroke-width: 2; rx: 8; }
+    .title { font-weight: bold; font-size: 16px; font-family: 'Segoe UI', sans-serif; }
+    .lbl { font-size: 12px; fill: #bdc3c7; }
+  </style>
+
+  <!-- ESP32 -->
+  <rect x="400" y="250" width="150" height="300" class="box" stroke="#e74c3c"/>
+  <text x="475" y="280" text-anchor="middle" class="title" fill="#e74c3c">ESP32</text>
+  
+  <!-- Left GPIOs -->
+  <text x="410" y="335">GPIO25</text>
+  <text x="410" y="385">GPIO26</text>
+  <text x="410" y="435">GPIO27</text>
+
+  <!-- Right GPIOs -->
+  <text x="485" y="335">GPIO12</text>
+  <text x="485" y="375">GPIO14</text>
+  <text x="485" y="415">GPIO13</text>
+  <text x="485" y="455">GPIO35</text>
+
+  <!-- Top GPIOs -->
+  <text x="420" y="235">16</text>
+  <text x="445" y="235">17</text>
+  <text x="495" y="235">21</text>
+  <text x="520" y="235">22</text>
+
+  <!-- Top Right GPIOs -->
+  <text x="555" y="270">18</text>
+  <text x="555" y="295">19</text>
+
+  <!-- Bottom GPIOs -->
+  <text x="420" y="565">34</text>
+  <text x="510" y="565">4</text>
+
+  <!-- IBT-2 & Motor -->
+  <rect x="80" y="320" width="140" height="120" class="box" stroke="#27ae60"/>
+  <text x="150" y="345" text-anchor="middle" class="title">IBT-2 BTS7960</text>
+  <text x="150" y="365" text-anchor="middle" font-size="12">1000µF cap B+/B-</text>
+  <text x="150" y="385" text-anchor="middle" font-size="12">TVS M+/M-</text>
+  
+  <rect x="80" y="500" width="140" height="50" class="box" fill="#27ae60" stroke="#27ae60"/>
+  <text x="150" y="530" text-anchor="middle" class="title">Motor</text>
+  <path d="M 150 440 L 150 490" stroke="#27ae60" stroke-width="3" marker-end="url(#arr)"/>
+
+  <!-- Connections Left (Red) -->
+  <path d="M 400 330 L 220 330" stroke="#e74c3c" stroke-width="2" marker-end="url(#arr-r)"/>
+  <text x="310" y="325" class="lbl" fill="#e74c3c">RPWM</text>
+  <use href="#pulldown" x="350" y="330"/>
+
+  <path d="M 400 380 L 220 380" stroke="#e74c3c" stroke-width="2" marker-end="url(#arr-r)"/>
+  <text x="310" y="375" class="lbl" fill="#e74c3c">LPWM</text>
+  <use href="#pulldown" x="330" y="380"/>
+
+  <path d="M 400 430 L 220 430" stroke="#e74c3c" stroke-width="2" marker-end="url(#arr-r)"/>
+  <text x="280" y="425" class="lbl" fill="#e74c3c">R_EN + L_EN</text>
+  <use href="#pulldown" x="370" y="430"/>
+
+  <!-- DRV8871 & Actuator -->
+  <rect x="730" y="320" width="140" height="140" class="box" stroke="#27ae60"/>
+  <text x="800" y="345" text-anchor="middle" class="title">DRV8871</text>
+  
+  <rect x="730" y="500" width="140" height="50" class="box" fill="#27ae60" stroke="#27ae60"/>
+  <text x="800" y="530" text-anchor="middle" class="title">Actuator</text>
+  <path d="M 800 460 L 800 490" stroke="#27ae60" stroke-width="3" marker-end="url(#arr)"/>
+
+  <!-- Connections Right (Green) -->
+  <path d="M 550 330 L 730 330" stroke="#27ae60" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="640" y="325" class="lbl" fill="#27ae60">IN1</text>
+  <use href="#pulldown" x="590" y="330"/>
+
+  <path d="M 550 370 L 730 370" stroke="#27ae60" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="640" y="365" class="lbl" fill="#27ae60">IN2</text>
+  <use href="#pulldown" x="610" y="370"/>
+
+  <path d="M 730 410 L 550 410" stroke="#f1c40f" stroke-width="2" marker-end="url(#arr-g)"/>
+  <text x="640" y="405" class="lbl" fill="#f1c40f">nFAULT</text>
+
+  <path d="M 730 450 L 550 450" stroke="#f1c40f" stroke-width="2" marker-end="url(#arr-g)"/>
+  <text x="640" y="445" class="lbl" fill="#f1c40f">CS (Current)</text>
+
+  <!-- Top GPS & AS5600 -->
+  <rect x="180" y="50" width="140" height="60" class="box" stroke="#f1c40f"/>
+  <text x="250" y="85" text-anchor="middle" class="title">NEO-M8N GPS</text>
+  
+  <rect x="360" y="90" width="100" height="40" class="box" fill="#5d6d7e"/>
+  <text x="410" y="115" text-anchor="middle" font-size="12">Level Shifter</text>
+
+  <path d="M 280 110 L 280 140 L 360 140" stroke="#f1c40f" stroke-width="2" marker-end="url(#arr-g)"/>
+  <path d="M 370 130 L 250 130 L 250 110" stroke="#f1c40f" stroke-width="2" marker-end="url(#arr-g)"/>
+  <text x="210" y="145" class="lbl">TX</text> <text x="230" y="125" class="lbl">RX</text>
+
+  <path d="M 400 130 L 400 210" stroke="#f1c40f" stroke-width="2" marker-end="url(#arr-g)"/>
+  <text x="405" y="180" class="lbl">to 16</text>
+  <path d="M 440 210 L 440 130" stroke="#f1c40f" stroke-width="2" marker-end="url(#arr-g)"/>
+  <text x="445" y="180" class="lbl">from 17</text>
+
+  <rect x="520" y="50" width="140" height="60" class="box" stroke="#f1c40f"/>
+  <text x="590" y="85" text-anchor="middle" class="title">AS5600 Enc</text>
+  
+  <path d="M 570 110 L 510 210" stroke="#f1c40f" stroke-width="2" marker-end="url(#arr-g)"/>
+  <text x="515" y="160" class="lbl">SDA (21)</text>
+  <path d="M 610 110 L 530 210" stroke="#f1c40f" stroke-width="2" marker-end="url(#arr-g)"/>
+  <text x="575" y="160" class="lbl">SCL (22)</text>
+
+  <!-- Pi Zero -->
+  <rect x="750" y="50" width="140" height="60" class="box" stroke="#3498db"/>
+  <text x="820" y="85" text-anchor="middle" class="title">Pi Zero 2W</text>
+  
+  <path d="M 550 260 L 750 100" stroke="#3498db" stroke-width="2" marker-end="url(#arr-b)"/>
+  <text x="660" y="170" class="lbl">TX (18) to RX</text>
+  
+  <path d="M 760 110 L 550 290" stroke="#3498db" stroke-width="2" marker-end="url(#arr-b)"/>
+  <text x="650" y="225" class="lbl">RX (19) from TX</text>
+
+  <!-- Bottom -->
+  <rect x="250" y="630" width="150" height="70" class="box" stroke="#f1c40f"/>
+  <text x="325" y="650" text-anchor="middle" class="title">Bat Divider</text>
+  <text x="325" y="670" text-anchor="middle" font-size="12">120kΩ + 30kΩ</text>
+  <text x="325" y="690" text-anchor="middle" font-size="12">0.1µF cap</text>
+
+  <path d="M 325 630 L 420 570" stroke="#f1c40f" stroke-width="2" marker-end="url(#arr-g)"/>
+  <text x="385" y="615" class="lbl">to 34</text>
+
+  <rect x="520" y="630" width="120" height="50" class="box" stroke="#f1c40f"/>
+  <text x="580" y="660" text-anchor="middle" class="title">DS18B20</text>
+  
+  <path d="M 580 630 L 520 570" stroke="#f1c40f" stroke-width="2" marker-end="url(#arr-g)"/>
+  <text x="560" y="615" class="lbl">to 4</text>
+</svg>

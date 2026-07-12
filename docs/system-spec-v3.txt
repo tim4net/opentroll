@@ -1,0 +1,285 @@
+OpenTroll — Corrected System Specification (v3)
+===============================================
+
+All 11 critical findings from EE + CS reviews applied.
+Pi Zero 2W companion computer included.
+
+=== POWER DISTRIBUTION ===
+
+12V LiFePO4 50Ah battery
+  → Blue Sea 6006 battery disconnect switch (ABYC E-11.10.1)
+    → 50A MRBF marine fuse (within 7" of battery)
+      → Main bus bar
+
+Main bus splits into THREE independently fused branches:
+
+  Branch 1 — MOTOR (40A fuse, 8 AWG):
+    → Monostable DC contactor (normally-open, 75A continuous, 12V coil)
+      NOTE: NOT latching. Coil held closed by lanyard circuit. Opens on lanyard pull.
+      Flyback protection: TVS diode SMBJ24A across coil (faster release than 1N4007 —
+      allows voltage to rise to 24V for rapid current decay, ~5ms release vs 50ms+ with diode).
+      Contactor coil current: verify reed switch rated ≥2× coil hold current, or use 
+      reed switch to drive a transistor/relay that handles full coil current.
+    → IBT-2 BTS7960 B+/B-
+    → Motor
+
+  Branch 2 — ELECTRONICS (3A fuse, 18 AWG):
+    → MP1584 buck converter (12V→5V, set to 5.0V)
+      (Upgrade to LM2596 or MP2307 for better transient response)
+    → Schottky diode 1N5817 (0.32V drop — was SS34 at 0.55V, too much)
+    → 220µF 16V + 0.1µF ceramic (brownout caps)
+    → ESP32 VIN
+    → NEO-M8N GPS VCC (5V)
+    → AS5600 VCC (3.3V from ESP32 3.3V pin)
+
+  Branch 3 — STEERING ACTUATOR (3A fuse, 18 AWG):
+    → DRV8871 H-bridge VIN (12V direct from bus)
+      100µF electrolytic + 0.1µF ceramic at DRV8871 VIN terminals
+    → DRV8871 OUT1/OUT2 → linear actuator
+
+  Branch 4 — Pi ZERO (3A fuse, 18 AWG):
+    → Separate 5V buck converter (or tap Branch 2 if current budget allows)
+    → Pi Zero 2W micro-USB power
+    → 5" display power (from Pi GPIO 5V pins)
+
+GROUND: All grounds tie at battery negative (single-point ground).
+Wire gauges: 8 AWG for motor branch, 18 AWG for electronics, 22 AWG for signals.
+Anderson Powerpole connectors on battery (keyed, reverse-polarity protection).
+Schottky diode 60A/45V across main bus for reverse polarity backup.
+
+=== KILL SWITCH CIRCUIT (LIFE-SAFETY) ===
+
+Battery positive (pre-disconnect) →
+  Reed switch (normally-closed, waterproof, IP67) →
+    Contactor coil (+) terminal
+    
+Contactor coil (-) → battery negative.
+
+Flyback diode 1N4007 across contactor coil (cathode to +, anode to -).
+
+Lanyard clips to operator PFD. Pull lanyard → reed switch opens → 
+contactor coil loses current → contactor springs open → motor power cut.
+Failsafe: if reed switch wire breaks, circuit opens → motor stops.
+Contactor is MONOSTABLE (normally-open) — only closed while coil energized.
+
+=== IBT-2 BTS7960 H-BRIDGE WIRING ===
+
+B+ → contactor output (post-40A fuse, 8 AWG)
+B- → common ground (8 AWG)
+R_EN + L_EN → tied together → GPIO27 (10kΩ pulldown to GND — defaults OFF)
+RPWM → GPIO25 (10kΩ pulldown to GND)
+LPWM → GPIO26 (10kΩ pulldown to GND)
+M+ → motor positive (8 AWG)
+M- → motor negative (8 AWG)
+
+Capacitors:
+  1000µF 35V electrolytic across B+/B- (short leads)
+  0.1µF ceramic parallel with electrolytic
+
+Protection:
+  TVS diode SMCJ20A across M+/M- (clamps at 32.4V — was SMCJ24A, too close to 40V max)
+  Motor wires twisted together (EMI reduction)
+
+Thermal:
+  DS18B20 thermistor epoxied to IBT-2 heatsink → GPIO4 (1-Wire)
+  Firmware: setWaitForConversion(false), poll async every 1s (non-blocking)
+  Warn at 80°C, derate at 85°C, kill at 90°C (with 5°C hysteresis)
+  Heatsink bonded to aluminum enclosure wall via thermal pad
+
+=== DRV8871 STEERING H-BRIDGE ===
+
+VIN → Branch 3 (3A fuse, dedicated, 18 AWG) — NOT shared with ESP32
+GND → common ground
+IN1 → GPIO12 (10kΩ pulldown to GND — strapping pin, must be LOW at boot)
+IN2 → GPIO14 (10kΩ pulldown to GND — prevents actuator movement at boot)
+OUT1 → actuator motor +
+OUT2 → actuator motor -
+nFAULT → GPIO13 (fault detection — stall, overcurrent)
+CS → GPIO15 (ADC1, current sense for stall detection)
+100µF electrolytic + 0.1µF ceramic at VIN terminals
+
+=== GPS (NEO-M8N) ===
+
+VCC → 5V (from Branch 2 buck converter)
+GND → common ground
+TX → logic level shifter (BSS138) → GPIO16 (RX2)
+RX → GPIO17 (TX2) direct (3.3V TX is fine for M8N RX)
+External active antenna (SMA bulkhead connector through enclosure wall)
+CR2032 battery backup (warm start in seconds, not minutes)
+
+=== BATTERY MONITORING (CORRECTED) ===
+
+Voltage divider: 120kΩ (battery+) to 30kΩ (GND)
+  Ratio: 0.20 → at 14.6V (full LiFePO4) = 2.92V (safe, under 3.3V)
+  At 10.5V (cutoff) = 2.10V
+  At 12.0V (normal) = 2.40V
+Junction → GPIO34 (ADC1_CH6, input-only)
+0.1µF ceramic capacitor from junction to GND (noise filter)
+
+Firmware conversion: voltage = adc_raw * (120+30)/30 * 3.3 / 4095
+  Simplified: voltage = adc_raw * 0.01612
+
+Hysteresis: cutoff at 10.5V, recovery at 11.5V (latched, requires manual re-arm)
+Low battery warning at 11.5V: throttle limited to 50% (limp mode)
+Moving average of 16 ADC samples for stable reading
+
+=== STEERING POSITION (AS5600) ===
+
+I2C: SDA → GPIO21, SCL → GPIO22 (ESP32 default I2C)
+VCC → 3.3V (from ESP32)
+GND → common ground
+4.7kΩ pull-ups on SDA and SCL to 3.3V
+Mounted on aluminum bracket, magnet on motor steering collar, 1-3mm gap
+
+=== Pi ZERO 2W COMPANION COMPUTER ===
+
+Power: 5V from dedicated buck converter (Branch 4, 3A fuse)
+  Or shares Branch 2 if total current < 3A (ESP32 ~200mA + GPS ~70mA + Pi ~350mA = 620mA, well under 3A)
+
+UART to ESP32:
+  Pi TX (GPIO14) → ESP32 GPIO9 (RX1) via logic level — Pi is 3.3V, safe
+  Pi RX (GPIO15) → ESP32 GPIO10 (TX1) — 3.3V to 3.3V, direct
+
+Pi GPIO:
+  DS18B20 temp sensor (shared with IBT-2 thermistor bus if 1-Wire)
+
+Pi functions:
+  Web server (Flask/FastAPI on port 80)
+  Serves 5" touchscreen display
+  Offline maps (Leaflet.js + cached OSM tiles on SD card)
+  Fishing spot database (SQLite)
+  UART bridge: sends high-level commands to ESP32, receives telemetry
+  Data logger (GPS track, battery, throttle, errors → SD card)
+  OTA firmware updater for ESP32
+
+Safety boundary: ESP32 always prioritizes ESP-NOW commands from Pod 1.
+Pi commands are advisory only. If Pod 1 steering dial moves → instant manual override.
+
+=== ESP32 PIN SUMMARY (POD 2) ===
+
+GPIO4  — DS18B20 1-Wire (IBT-2 temperature)
+GPIO18 — UART1 TX (to Pi Zero RX)
+GPIO19 — UART1 RX (from Pi Zero TX)
+GPIO12 — DRV8871 IN1 (10kΩ pulldown, strapping pin)
+GPIO13 — DRV8871 nFAULT (input)
+GPIO14 — DRV8871 IN2 (10kΩ pulldown)
+GPIO35 — DRV8871 CS (ADC1_CH7, current sense — was GPIO15/ADC2, fixed)
+GPIO16 — UART2 RX (GPS TX via level shifter)
+GPIO17 — UART2 TX (GPS RX)
+GPIO21 — I2C SDA (AS5600)
+GPIO22 — I2C SCL (AS5600)
+GPIO25 — RPWM (10kΩ pulldown)
+GPIO26 — LPWM (10kΩ pulldown)
+GPIO27 — H-bridge enable (10kΩ pulldown)
+GPIO34 — Battery voltage divider (ADC1_CH6, input-only)
+
+=== ESP32-C3 PIN SUMMARY (POD 1) ===
+
+GPIO2  — Speed pot (ADC1_CH2 — corrected from CH0)
+GPIO3  — Steering pot (ADC1_CH3 — corrected from CH1)
+GPIO4  — Direction Forward (INPUT_PULLUP)
+GPIO5  — Direction Reverse (INPUT_PULLUP)
+GPIO6  — Anchor button (INPUT_PULLUP)
+GPIO7  — Anchor LED (150Ω to GND — was 220Ω, too dim for sunlight)
+GPIO8  — I2C SDA (OLED + compass, 4.7kΩ pull-up — strapping pin, HIGH at boot)
+GPIO9  — I2C SCL (OLED + compass, 4.7kΩ pull-up — strapping pin, HIGH at boot)
+GPIO1  — Battery voltage (ADC1_CH1, 18650 level via divider)
+5V     — TP4056 Type-C module with DW01 protection (6-pin type) + boost converter to 5V
+          DO NOT use 4-pin unprotected TP4056 — no over-discharge protection
+
+=== FIRMWARE STATE MACHINE (CORRECTED) ===
+
+States: BOOT → POST → DISARMED → ARMING → MANUAL ↔ SPOT_LOCK
+Also: RF_TIMEOUT, ERROR, ERROR_LOCKOUT
+
+Critical fixes applied:
+
+1. NON-BLOCKING dead-time (CS-1):
+   Direction changes use millis() timestamp, NOT delay(100).
+   State enters MANUAL_DIR_CHANGE sub-state, sets dead_time_until = millis() + 100.
+   Main loop continues running safety checks at 20Hz throughout.
+   Motor PWM held at 0 until dead_time_until expires.
+
+2. GPS LOSS during spot-lock (CS-2):
+   SPOT_LOCK continuously monitors GPS quality.
+   If sats < 4 OR fix_age > 2000ms → throttle to 0, display warning.
+   If quality not restored in 10 seconds → SPOT_LOCK → MANUAL.
+
+3. HEADING SOURCE (CS-3):
+   GPS COG used only when sog > 0.8 m/s.
+   Compass used when sog < 0.3 m/s.
+   Hysteresis band 0.3-0.8 m/s prevents rapid switching.
+   PID derivative state reset on source switch.
+
+4. ARMING RF GAP (CS-4):
+   ARMING state monitors RF link continuously.
+   Any RF gap > 100ms during arming → reset timer to 0.
+   ARMING → DISARMED if RF link lost.
+   ARMING → MANUAL only after 2 seconds of CONTINUOUS RF.
+
+5. BATTERY HYSTERESIS (CS-5):
+   Cutoff at 10.5V → motor OFF, state ERROR.
+   Recovery requires voltage > 11.5V for 2 seconds sustained.
+   Recovery → DISARMED (requires manual re-arm).
+   Low battery at 11.5V → throttle limited to 50% (limp mode).
+
+6. ERROR RECOVERY (CS-6):
+   Critical faults (→ ERROR_LOCKOUT, power cycle required):
+     - Shoot-through detected
+     - Brownout reset
+     - Watchdog reset
+     - 3 repeated faults of same type
+   
+   Recoverable faults (→ DISARMED on clear, manual re-arm):
+     - Transient overtemp (cools below 75°C with hysteresis)
+     - Low voltage recovery (voltage sustained > 11.5V for 2s)
+   
+7. ANCHOR BUTTON DEBOUNCE (CS-11):
+   Button state must be stable for 3 consecutive packets (~150ms at 20Hz).
+   Rising-edge triggered for SPOT_LOCK engagement.
+   No action on noise/bounce.
+
+8. HARDWARE WATCHDOG (CS-7):
+   ESP32 Task Watchdog enabled, 500ms timeout.
+   Fed every loop cycle.
+   If loop hangs → watchdog resets → boot checks reset reason → DISARMED.
+
+9. NON-BLOCKING TELEMETRY (CS-12):
+   esp_now_send() called in non-blocking mode.
+   TX callback (if used) does not block.
+   Measured worst-case loop time must stay under 50ms.
+
+10. STEERING ACTUATOR FEEDBACK (CS-13):
+    AS5600 reads actual actuator position every cycle.
+    If commanded position vs actual position discrepancy > 15° for > 500ms →
+    STEERING_FAULT error, motor throttle reduced to idle.
+    Actuator at full lock > 10 seconds continuously → warning.
+
+11. ESP-NOW PACKET VALIDATION (CS-10):
+    Sender MAC filtered (only accept from paired Pod 1).
+    AES encryption enabled.
+    All fields range-checked before use (speed 0-4095, direction 0-2, etc.).
+    Invalid packet → discarded, counted toward loss rate.
+    Sequence number gap detection with wraparound handling.
+
+=== FUSES SUMMARY ===
+
+| Location | Rating | Type | Wire |
+|----------|--------|------|------|
+| Battery main | 50A | MRBF marine | 8 AWG |
+| Motor branch | 40A | ANL or MRBF | 8 AWG |
+| Electronics branch | 3A | ATO blade | 18 AWG |
+| Steering actuator branch | 3A | ATO blade | 18 AWG |
+| Pi Zero branch | 3A | ATO blade | 18 AWG |
+| Pod 1 18650 | 2A | Polyfuse | 22 AWG |
+
+=== ENCLOSURE ===
+
+Commercial IP67 polycarbonate dry boxes (NOT 3D-printed).
+Pod 2: 8×6×3" minimum (verified interior dimensions with calipers).
+Conformal coating on all PCBs (MG Chemicals 422B).
+Gore-Tex vent for pressure equalization.
+Desiccant packs (10g minimum, rechargeable).
+Cable glands: PG11+ for motor power (8 AWG), PG7 for signal wires.
+All penetrations at bottom of box, drip loops on all cables.
+316 stainless hardware. Nyloc nuts + blue Loctite.

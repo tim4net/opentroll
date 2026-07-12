@@ -1,0 +1,108 @@
+<svg width="900" height="700" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#1a1a2e"/>
+  <defs>
+    <marker id="arr-grey" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L0,10 L9,5 z" fill="#5d6d7e"/></marker>
+    <marker id="arr-green" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L0,10 L9,5 z" fill="#27ae60"/></marker>
+    <marker id="arr-red" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L0,10 L9,5 z" fill="#e74c3c"/></marker>
+  </defs>
+  <style>
+    text { font-family: 'Segoe UI', sans-serif; fill: #ecf0f1; font-size: 14px; font-weight: bold; }
+    .lbl { font-size: 12px; font-weight: normal; fill: #bdc3c7; }
+  </style>
+
+  <rect x="350" y="30" width="200" height="50" rx="8" fill="#27ae60"/>
+  <text x="450" y="60" text-anchor="middle">12V LiFePO4 50Ah Battery</text>
+  
+  <rect x="560" y="45" width="80" height="20" rx="3" fill="#e74c3c"/>
+  <text x="600" y="59" text-anchor="middle" font-size="10">Anderson</text>
+
+  <path d="M 450 80 L 450 120" stroke="#5d6d7e" stroke-width="3" marker-end="url(#arr-grey)"/>
+
+  <rect x="350" y="130" width="200" height="40" rx="6" fill="#5d6d7e"/>
+  <text x="450" y="155" text-anchor="middle">Blue Sea 6006 Switch</text>
+
+  <path d="M 450 170 L 450 210" stroke="#5d6d7e" stroke-width="3" marker-end="url(#arr-grey)"/>
+
+  <rect x="350" y="220" width="200" height="40" rx="6" fill="#5d6d7e"/>
+  <text x="450" y="240" text-anchor="middle">50A MRBF Fuse</text>
+  <text x="450" y="255" text-anchor="middle" class="lbl">within 7 inches</text>
+
+  <path d="M 450 260 L 450 300" stroke="#5d6d7e" stroke-width="3" marker-end="url(#arr-grey)"/>
+
+  <!-- Main Bus Bar -->
+  <rect x="100" y="300" width="700" height="10" fill="#5d6d7e"/>
+  <text x="450" y="295" text-anchor="middle" class="lbl">Main Bus Bar</text>
+
+  <!-- Branch 1 -->
+  <path d="M 200 310 L 200 340" stroke="#27ae60" stroke-width="3" marker-end="url(#arr-green)"/>
+  <text x="210" y="330" class="lbl">8 AWG</text>
+  <rect x="130" y="350" width="140" height="40" rx="5" fill="#27ae60"/>
+  <text x="200" y="375" text-anchor="middle">40A Fuse</text>
+  <path d="M 200 390 L 200 420" stroke="#27ae60" stroke-width="3" marker-end="url(#arr-green)"/>
+  
+  <rect x="130" y="430" width="140" height="50" rx="5" fill="#27ae60"/>
+  <text x="200" y="452" text-anchor="middle">Monostable</text>
+  <text x="200" y="468" text-anchor="middle">Contactor 75A</text>
+  <path d="M 200 480 L 200 510" stroke="#27ae60" stroke-width="3" marker-end="url(#arr-green)"/>
+  
+  <rect x="130" y="520" width="140" height="40" rx="5" fill="#27ae60"/>
+  <text x="200" y="545" text-anchor="middle">IBT-2 BTS7960</text>
+  <path d="M 200 560 L 200 590" stroke="#27ae60" stroke-width="3" marker-end="url(#arr-green)"/>
+  
+  <rect x="130" y="600" width="140" height="40" rx="5" fill="#27ae60"/>
+  <text x="200" y="625" text-anchor="middle">Motor</text>
+
+  <!-- Branch 2 -->
+  <path d="M 370 310 L 370 340" stroke="#27ae60" stroke-width="2" marker-end="url(#arr-green)"/>
+  <text x="380" y="330" class="lbl">18 AWG</text>
+  <rect x="310" y="350" width="120" height="40" rx="5" fill="#27ae60"/>
+  <text x="370" y="375" text-anchor="middle">3A Fuse</text>
+  <path d="M 370 390 L 370 420" stroke="#27ae60" stroke-width="2" marker-end="url(#arr-green)"/>
+  
+  <rect x="310" y="430" width="120" height="40" rx="5" fill="#27ae60"/>
+  <text x="370" y="455" text-anchor="middle">Buck 12V→5V</text>
+  <path d="M 370 470 L 370 500" stroke="#e74c3c" stroke-width="2" marker-end="url(#arr-red)"/>
+  
+  <rect x="310" y="510" width="120" height="40" rx="5" fill="#e74c3c"/>
+  <text x="370" y="535" text-anchor="middle">ESP32 + GPS</text>
+
+  <!-- Branch 3 -->
+  <path d="M 530 310 L 530 340" stroke="#27ae60" stroke-width="2" marker-end="url(#arr-green)"/>
+  <text x="540" y="330" class="lbl">18 AWG</text>
+  <rect x="470" y="350" width="120" height="40" rx="5" fill="#27ae60"/>
+  <text x="530" y="375" text-anchor="middle">3A Fuse</text>
+  <path d="M 530 390 L 530 420" stroke="#27ae60" stroke-width="2" marker-end="url(#arr-green)"/>
+  
+  <rect x="470" y="430" width="120" height="40" rx="5" fill="#27ae60"/>
+  <text x="530" y="455" text-anchor="middle">DRV8871</text>
+  <path d="M 530 470 L 530 500" stroke="#27ae60" stroke-width="2" marker-end="url(#arr-green)"/>
+  
+  <rect x="470" y="510" width="120" height="40" rx="5" fill="#27ae60"/>
+  <text x="530" y="535" text-anchor="middle">Actuator</text>
+
+  <!-- Branch 4 -->
+  <path d="M 690 310 L 690 340" stroke="#e74c3c" stroke-width="2" marker-end="url(#arr-red)"/>
+  <text x="700" y="330" class="lbl">18 AWG</text>
+  <rect x="630" y="350" width="120" height="40" rx="5" fill="#e74c3c"/>
+  <text x="690" y="375" text-anchor="middle">3A Fuse</text>
+  <path d="M 690 390 L 690 420" stroke="#e74c3c" stroke-width="2" marker-end="url(#arr-red)"/>
+  
+  <rect x="630" y="430" width="120" height="50" rx="5" fill="#e74c3c"/>
+  <text x="690" y="452" text-anchor="middle">Pi Zero 2W</text>
+  <text x="690" y="468" text-anchor="middle">+ Display</text>
+
+  <!-- Side Circuit -->
+  <rect x="20" y="350" width="90" height="40" rx="5" fill="#9b59b6"/>
+  <text x="65" y="368" text-anchor="middle" font-size="11">Reed Switch</text>
+  <text x="65" y="383" text-anchor="middle" font-size="11">(NC)</text>
+  <text x="65" y="340" text-anchor="middle" class="lbl">Lanyard to PFD</text>
+
+  <path d="M 65 390 L 65 430" stroke="#e74c3c" stroke-width="2" stroke-dasharray="4,4" marker-end="url(#arr-red)"/>
+  
+  <rect x="20" y="440" width="90" height="50" rx="5" fill="#5d6d7e"/>
+  <text x="65" y="458" text-anchor="middle" font-size="11">Contactor</text>
+  <text x="65" y="473" text-anchor="middle" font-size="11">Coil</text>
+  <text x="65" y="485" text-anchor="middle" font-size="9" fill="#f1c40f">+ TVS Diode</text>
+  
+  <path d="M 110 465 L 130 465" stroke="#e74c3c" stroke-width="2" stroke-dasharray="4,4" marker-end="url(#arr-red)"/>
+</svg>

@@ -1,0 +1,89 @@
+<svg width="900" height="700" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#1a1a2e"/>
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L0,10 L9,5 z" fill="#ecf0f1"/></marker>
+    <marker id="arr-g" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L0,10 L9,5 z" fill="#27ae60"/></marker>
+    <marker id="arr-r" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L0,10 L9,5 z" fill="#e74c3c"/></marker>
+  </defs>
+  
+  <style>
+    text { font-family: 'Segoe UI', sans-serif; fill: #ecf0f1; }
+    .box { stroke: #ecf0f1; stroke-width: 2; rx: 12; }
+    .title { font-weight: bold; font-size: 14px; }
+    .lbl { font-size: 12px; fill: #bdc3c7; background: #1a1a2e; }
+  </style>
+
+  <!-- States -->
+  <rect x="380" y="40" width="140" height="50" class="box" fill="#5d6d7e"/>
+  <text x="450" y="70" text-anchor="middle" class="title">BOOT</text>
+
+  <rect x="380" y="140" width="140" height="50" class="box" fill="#5d6d7e"/>
+  <text x="450" y="170" text-anchor="middle" class="title">POST</text>
+
+  <rect x="380" y="240" width="140" height="50" class="box" fill="#f39c12"/>
+  <text x="450" y="270" text-anchor="middle" class="title">DISARMED</text>
+
+  <rect x="380" y="340" width="140" height="50" class="box" fill="#2c3e50" stroke="#f1c40f"/>
+  <text x="450" y="370" text-anchor="middle" class="title" fill="#f1c40f">ARMING</text>
+
+  <rect x="230" y="480" width="140" height="50" class="box" fill="#27ae60"/>
+  <text x="300" y="510" text-anchor="middle" class="title">MANUAL</text>
+
+  <rect x="530" y="480" width="140" height="50" class="box" fill="#27ae60"/>
+  <text x="600" y="510" text-anchor="middle" class="title">SPOT_LOCK</text>
+
+  <rect x="60" y="340" width="140" height="50" class="box" fill="#d35400"/>
+  <text x="130" y="370" text-anchor="middle" class="title">RF_TIMEOUT</text>
+
+  <rect x="700" y="340" width="140" height="50" class="box" fill="#e74c3c"/>
+  <text x="770" y="370" text-anchor="middle" class="title">ERROR</text>
+
+  <rect x="700" y="140" width="140" height="50" class="box" fill="#900C3F"/>
+  <text x="770" y="170" text-anchor="middle" class="title">ERROR_LOCKOUT</text>
+  
+  <circle cx="770" cy="100" r="15" fill="none" stroke="#ecf0f1" stroke-width="2"/>
+  <line x1="770" y1="80" x2="770" y2="105" stroke="#ecf0f1" stroke-width="2"/>
+  <path d="M 770 115 L 770 140" stroke="#ecf0f1" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Paths -->
+  <path d="M 450 90 L 450 135" stroke="#ecf0f1" stroke-width="2" marker-end="url(#arr)"/>
+  
+  <path d="M 450 190 L 450 235" stroke="#ecf0f1" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="460" y="215" class="lbl">pass</text>
+
+  <path d="M 520 165 L 690 165" stroke="#e74c3c" stroke-width="2" marker-end="url(#arr-r)"/>
+  <text x="605" y="155" text-anchor="middle" class="lbl" fill="#e74c3c">fail</text>
+
+  <path d="M 450 290 L 450 335" stroke="#ecf0f1" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="460" y="315" class="lbl">RF link 2s continuous</text>
+
+  <path d="M 430 390 L 330 475" stroke="#ecf0f1" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="350" y="420" class="lbl">timer complete</text>
+
+  <path d="M 370 495 L 520 495" stroke="#ecf0f1" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="445" y="485" text-anchor="middle" class="lbl">anchor btn + GPS</text>
+  
+  <path d="M 520 515 L 370 515" stroke="#ecf0f1" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="445" y="535" text-anchor="middle" class="lbl">panic override / release</text>
+
+  <!-- RF_TIMEOUT paths -->
+  <path d="M 230 495 L 130 395" stroke="#d35400" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="130" y="460" class="lbl" fill="#d35400">no packet 500ms</text>
+  
+  <path d="M 600 530 L 600 620 L 130 620 L 130 395" fill="none" stroke="#d35400" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arr)"/>
+  
+  <path d="M 130 340 L 130 265 L 370 265" fill="none" stroke="#27ae60" stroke-width="2" marker-end="url(#arr-g)"/>
+  <text x="250" y="255" text-anchor="middle" class="lbl" fill="#27ae60">RF restored</text>
+
+  <!-- ERROR paths -->
+  <path d="M 370 485 L 750 395" fill="none" stroke="#e74c3c" stroke-width="2" marker-end="url(#arr-r)"/>
+  <path d="M 670 485 L 750 395" fill="none" stroke="#e74c3c" stroke-width="2" marker-end="url(#arr-r)"/>
+  <text x="680" y="445" class="lbl" fill="#e74c3c">fault</text>
+
+  <path d="M 770 340 L 770 195" stroke="#e74c3c" stroke-width="2" marker-end="url(#arr-r)"/>
+  <text x="780" y="270" class="lbl" fill="#e74c3c">critical</text>
+
+  <path d="M 720 340 L 520 275" fill="none" stroke="#ecf0f1" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="640" y="295" text-anchor="middle" class="lbl">recoverable fault cleared</text>
+
+</svg>

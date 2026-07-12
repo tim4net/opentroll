@@ -1,0 +1,63 @@
+<svg width="700" height="800" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#1a1a2e"/>
+  
+  <style>
+    text { font-family: 'Segoe UI', sans-serif; fill: #ecf0f1; }
+    .title { font-weight: bold; font-size: 20px; fill: #ecf0f1; }
+    .layer-title { font-weight: bold; font-size: 15px; fill: #1a1a2e; }
+    .layer-desc { font-size: 13px; fill: #1a1a2e; }
+    .bar { rx: 20; }
+  </style>
+
+  <text x="350" y="60" text-anchor="middle" class="title">OpenTroll Safety — 10 Layers, Zero Single Points of Failure</text>
+
+  <!-- 1 -->
+  <rect x="100" y="100" width="500" height="50" class="bar" fill="#bdc3c7"/>
+  <text x="350" y="120" text-anchor="middle" class="layer-title">1. POST — Boot Self-Test</text>
+  <text x="350" y="140" text-anchor="middle" class="layer-desc">verifies all subsystems • boot time</text>
+
+  <!-- 2 -->
+  <rect x="90" y="165" width="520" height="50" class="bar" fill="#f1c40f"/>
+  <text x="350" y="185" text-anchor="middle" class="layer-title">2. Overtemp — ESC >90°C → motor off</text>
+  <text x="350" y="205" text-anchor="middle" class="layer-desc">DS18B20 sensor • 1s</text>
+
+  <!-- 3 -->
+  <rect x="80" y="230" width="540" height="50" class="bar" fill="#f1c40f"/>
+  <text x="350" y="250" text-anchor="middle" class="layer-title">3. Low-Voltage Cutoff — &lt;10.5V motor off, hysteresis 11.5V</text>
+  <text x="350" y="270" text-anchor="middle" class="layer-desc">ADC • 50ms</text>
+
+  <!-- 4 -->
+  <rect x="70" y="295" width="560" height="50" class="bar" fill="#9b59b6"/>
+  <text x="350" y="315" text-anchor="middle" class="layer-title" fill="#ffffff">4. Panic Override — steer dial or switch → manual</text>
+  <text x="350" y="335" text-anchor="middle" class="layer-desc" fill="#ffffff">firmware • 20ms</text>
+
+  <!-- 5 -->
+  <rect x="60" y="360" width="580" height="50" class="bar" fill="#e74c3c"/>
+  <text x="350" y="380" text-anchor="middle" class="layer-title" fill="#ffffff">5. RF Timeout — no packet 500ms → motor off</text>
+  <text x="350" y="400" text-anchor="middle" class="layer-desc" fill="#ffffff">firmware • 500ms</text>
+
+  <!-- 6 -->
+  <rect x="50" y="425" width="600" height="50" class="bar" fill="#bdc3c7"/>
+  <text x="350" y="445" text-anchor="middle" class="layer-title">6. PWM Pulldowns — GPIO25/26/27 LOW at boot</text>
+  <text x="350" y="465" text-anchor="middle" class="layer-desc">hardware • always</text>
+
+  <!-- 7 -->
+  <rect x="40" y="490" width="620" height="50" class="bar" fill="#e74c3c"/>
+  <text x="350" y="510" text-anchor="middle" class="layer-title" fill="#ffffff">7. Shoot-Through Guard — dead-time + interlock</text>
+  <text x="350" y="530" text-anchor="middle" class="layer-desc" fill="#ffffff">hardware+firmware • &lt;1ms</text>
+
+  <!-- 8 -->
+  <rect x="30" y="555" width="640" height="50" class="bar" fill="#e74c3c"/>
+  <text x="350" y="575" text-anchor="middle" class="layer-title" fill="#ffffff">8. H-Bridge Disable — GPIO27 LOW = off</text>
+  <text x="350" y="595" text-anchor="middle" class="layer-desc" fill="#ffffff">hardware • &lt;1ms</text>
+
+  <!-- 9 -->
+  <rect x="20" y="620" width="660" height="50" class="bar" fill="#9b59b6"/>
+  <text x="350" y="640" text-anchor="middle" class="layer-title" fill="#ffffff">9. Direction Switch — center = OFF</text>
+  <text x="350" y="660" text-anchor="middle" class="layer-desc" fill="#ffffff">mechanical • instant</text>
+
+  <!-- 10 -->
+  <rect x="10" y="685" width="680" height="65" class="bar" fill="#27ae60"/>
+  <text x="350" y="710" text-anchor="middle" class="layer-title" fill="#ffffff">10. Lanyard Kill Switch — hardware power cut</text>
+  <text x="350" y="730" text-anchor="middle" class="layer-desc" fill="#ffffff">contactor • &lt;10ms</text>
+</svg>
