@@ -176,7 +176,7 @@ GPIO34 — Battery voltage divider (ADC1_CH6, input-only)
 === ESP32-C3 PIN SUMMARY (POD 1) ===
 
 GPIO2  — Speed pot (ADC1_CH2 — corrected from CH0)
-GPIO3  — Steering pot (ADC1_CH3 — corrected from CH1)
+GPIO3  — Steering pot (ADC1_CH3 — detented, commands motor-head angle; NOT spring-return)
 GPIO4  — Direction Forward (INPUT_PULLUP)
 GPIO5  — Direction Reverse (INPUT_PULLUP)
 GPIO6  — Anchor button (INPUT_PULLUP)
@@ -261,6 +261,17 @@ Critical fixes applied:
     All fields range-checked before use (speed 0-4095, direction 0-2, etc.).
     Invalid packet → discarded, counted toward loss rate.
     Sequence number gap detection with wraparound handling.
+
+12. STEERING MODE = HEADING COMMAND (not turn-rate):
+    The Pod 1 steering pot is DETENTED (no spring-return) and commands the
+    absolute motor-head angle relative to boat centerline, NOT a turn rate.
+    Example: pot at +8° → Pod 2 drives the actuator to hold the motor head at
+    8° left of centerline → boat tracks a steady bias course (combats crosswind/
+    current) WITHOUT the operator holding the dial.
+    - Pot center detent = motor straight (0°)
+    - Any pot movement = manual override (cancels spot-lock, same as before)
+    - AS5600 feedback holds the commanded angle via PID even after release
+    - This matches a hand tiller: set a bias, let go, it stays.
 
 === FUSES SUMMARY ===
 
