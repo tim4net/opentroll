@@ -8,12 +8,12 @@ Pi Zero 2W companion computer included.
 
 12V LiFePO4 50Ah battery
   → Blue Sea 6006 battery disconnect switch (ABYC E-11.10.1)
-    → Blue Sea 7050 50A THERMAL CIRCUIT BREAKER (within 7" of battery, resettable)
+    → Blue Sea 7250 50A THERMAL CIRCUIT BREAKER (within 7" of battery, resettable)
       → Main bus bar
 
 Main bus splits into THREE independently fused (resettable) branches:
 
-  Branch 1 — MOTOR (Blue Sea 7030 40A THERMAL BREAKER, 8 AWG):
+  Branch 1 — MOTOR (Blue Sea 7270 40A THERMAL BREAKER, 8 AWG):
     → Monostable DC contactor (normally-open, 75A continuous, 12V coil)
       NOTE: NOT latching. Coil held closed by lanyard circuit. Opens on lanyard pull.
       Flyback protection: TVS diode SMBJ24A across coil (faster release than 1N4007 —
@@ -268,8 +268,8 @@ Critical fixes applied:
 
 | Location | Rating | Type | Wire |
 |----------|--------|------|------|
-| Battery main | 50A | Blue Sea 7050 thermal breaker (resettable) | 8 AWG |
-| Motor branch | 40A | Blue Sea 7030 thermal breaker (resettable) | 8 AWG |
+| Battery main | 50A | Blue Sea 7250 thermal breaker (resettable) | 8 AWG |
+| Motor branch | 40A | Blue Sea 7270 thermal breaker (resettable) | 8 AWG |
 | Electronics branch | 3A | Blade reset fuse (manual reset) | 18 AWG |
 | Steering actuator branch | 3A | Blade reset fuse (manual reset) | 18 AWG |
 | Pi Zero branch | 3A | Blade reset fuse (manual reset) | 18 AWG |
