@@ -430,6 +430,136 @@ void test_spotlock_heading_wrap_no_spin(void) {
 // MAIN
 // ============================================================
 
+// ============================================================
+// BATTERY MONITOR TESTS (Round 3 safety review)
+// ============================================================
+
+void test_batt_adc_conversion(void) {
+    // 120k/30k divider: 12.0V battery → 2.4V ADC → raw ≈ 2978
+    TEST_ASSERT_FLOAT_WITHIN(0.05f, 12.0f, adc_to_battery_voltage(2978));
+    // Full LiFePO4 14.6V → 2.92V → raw ≈ 3623
+    TEST_ASSERT_FLOAT_WITHIN(0.05f, 14.6f, adc_to_battery_voltage(3623));
+}
+
+void test_batt_critical_latches(void) {
+    BattMonitor m; batt_monitor_init(m);
+    TEST_ASSERT_EQUAL(BATT_CRITICAL, batt_monitor_update(m, 10.0f, 1000));
+    // Voltage bounces back above cutoff but below recovery — still critical
+    TEST_ASSERT_EQUAL(BATT_CRITICAL, batt_monitor_update(m, 11.0f, 1100));
+    // Above recovery threshold but not sustained 2s — still critical
+    TEST_ASSERT_EQUAL(BATT_CRITICAL, batt_monitor_update(m, 11.8f, 1200));
+    TEST_ASSERT_EQUAL(BATT_CRITICAL, batt_monitor_update(m, 11.8f, 2000));
+    // Sustained >2s — recovers to LOW (not OK): caller must re-arm
+    TEST_ASSERT_EQUAL(BATT_LOW, batt_monitor_update(m, 11.8f, 3300));
+}
+
+void test_batt_recovery_clock_resets_on_dip(void) {
+    BattMonitor m; batt_monitor_init(m);
+    batt_monitor_update(m, 10.0f, 0);           // critical
+    batt_monitor_update(m, 11.8f, 100);         // recovery clock starts
+    batt_monitor_update(m, 11.0f, 1500);        // dip — clock resets
+    // 2s after the ORIGINAL start, but dip reset the clock — still critical
+    TEST_ASSERT_EQUAL(BATT_CRITICAL, batt_monitor_update(m, 11.8f, 2200));
+    // 2s after the new start — recovers
+    TEST_ASSERT_EQUAL(BATT_LOW, batt_monitor_update(m, 11.8f, 4300));
+}
+
+void test_batt_limp_mode_caps_throttle(void) {
+    TEST_ASSERT_EQUAL(127, apply_limp_mode(255, BATT_LOW));
+    TEST_ASSERT_EQUAL(100, apply_limp_mode(100, BATT_LOW));
+    TEST_ASSERT_EQUAL(255, apply_limp_mode(255, BATT_OK));
+}
+
+void test_batt_filter_averages(void) {
+    BattFilter f; batt_filter_init(f);
+    float out = 0;
+    for (int i = 0; i < 16; i++) out = batt_filter_update(f, 12.0f);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 12.0f, out);
+    // One noise spike moves a 16-sample average by 1/16 of the spike
+    out = batt_filter_update(f, 8.0f);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 12.0f - 4.0f/16.0f, out);
+}
+
+// ============================================================
+// HEADING SOURCE HYSTERESIS TESTS (CS-3)
+// ============================================================
+
+void test_heading_source_thresholds(void) {
+    TEST_ASSERT_EQUAL(HDG_COG, select_heading_source(HDG_COMPASS, 1.0f));
+    TEST_ASSERT_EQUAL(HDG_COMPASS, select_heading_source(HDG_COG, 0.2f));
+}
+
+void test_heading_source_hysteresis_band(void) {
+    // In the 0.3-0.8 band, previous source is kept — no rapid switching
+    TEST_ASSERT_EQUAL(HDG_COG, select_heading_source(HDG_COG, 0.5f));
+    TEST_ASSERT_EQUAL(HDG_COMPASS, select_heading_source(HDG_COMPASS, 0.5f));
+}
+
+// ============================================================
+// THERMAL PROTECTION TESTS (README safety layer 8)
+// ============================================================
+
+void test_temp_thresholds(void) {
+    TEST_ASSERT_EQUAL(TEMP_OK, temp_state_update(TEMP_OK, 70.0f));
+    TEST_ASSERT_EQUAL(TEMP_WARN, temp_state_update(TEMP_OK, 82.0f));
+    TEST_ASSERT_EQUAL(TEMP_DERATE, temp_state_update(TEMP_OK, 86.0f));
+    TEST_ASSERT_EQUAL(TEMP_KILL, temp_state_update(TEMP_OK, 91.0f));
+}
+
+void test_temp_kill_latches_until_75(void) {
+    TempState s = temp_state_update(TEMP_OK, 95.0f);
+    TEST_ASSERT_EQUAL(TEMP_KILL, s);
+    s = temp_state_update(s, 85.0f);   // cooled but not enough
+    TEST_ASSERT_EQUAL(TEMP_KILL, s);
+    s = temp_state_update(s, 76.0f);   // still not below 75
+    TEST_ASSERT_EQUAL(TEMP_KILL, s);
+    s = temp_state_update(s, 74.0f);   // recovered
+    TEST_ASSERT_EQUAL(TEMP_OK, s);
+}
+
+void test_temp_derate_hysteresis(void) {
+    TempState s = temp_state_update(TEMP_OK, 86.0f);
+    TEST_ASSERT_EQUAL(TEMP_DERATE, s);
+    s = temp_state_update(s, 83.0f);   // below 85 but above 80 — stay derated
+    TEST_ASSERT_EQUAL(TEMP_DERATE, s);
+    s = temp_state_update(s, 79.0f);   // below 80 — recover
+    TEST_ASSERT_EQUAL(TEMP_OK, s);
+}
+
+void test_temp_derate_caps_throttle(void) {
+    TEST_ASSERT_EQUAL(127, apply_temp_derate(255, TEMP_DERATE));
+    TEST_ASSERT_EQUAL(0, apply_temp_derate(255, TEMP_KILL));
+    TEST_ASSERT_EQUAL(255, apply_temp_derate(255, TEMP_OK));
+    TEST_ASSERT_EQUAL(255, apply_temp_derate(255, TEMP_WARN));
+}
+
+// ============================================================
+// ANCHOR DEBOUNCE TESTS (CS-11)
+// ============================================================
+
+void test_debounce_requires_3_packets(void) {
+    AnchorDebounce d; anchor_debounce_init(d);
+    TEST_ASSERT_EQUAL(0, anchor_debounce(d, 1));  // 1st — not yet
+    TEST_ASSERT_EQUAL(0, anchor_debounce(d, 1));  // 2nd — not yet
+    TEST_ASSERT_EQUAL(1, anchor_debounce(d, 1));  // 3rd — flips
+}
+
+void test_debounce_rejects_noise(void) {
+    AnchorDebounce d; anchor_debounce_init(d);
+    anchor_debounce(d, 1);
+    anchor_debounce(d, 0);   // bounce back — resets confirmation
+    anchor_debounce(d, 1);
+    TEST_ASSERT_EQUAL(0, anchor_debounce(d, 0)); // never stabilized at 1
+}
+
+void test_debounce_release_also_debounced(void) {
+    AnchorDebounce d; anchor_debounce_init(d);
+    anchor_debounce(d, 1); anchor_debounce(d, 1); anchor_debounce(d, 1);
+    TEST_ASSERT_EQUAL(1, anchor_debounce(d, 0));  // 1st release — hold
+    TEST_ASSERT_EQUAL(1, anchor_debounce(d, 0));  // 2nd — hold
+    TEST_ASSERT_EQUAL(0, anchor_debounce(d, 0));  // 3rd — released
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
 
@@ -485,6 +615,28 @@ int main(int argc, char **argv) {
     RUN_TEST(test_spotlock_no_throttle_in_deadband);
     RUN_TEST(test_spotlock_pid_does_not_explode);
     RUN_TEST(test_spotlock_heading_wrap_no_spin);
+
+    // Battery monitor tests (Round 3)
+    RUN_TEST(test_batt_adc_conversion);
+    RUN_TEST(test_batt_critical_latches);
+    RUN_TEST(test_batt_recovery_clock_resets_on_dip);
+    RUN_TEST(test_batt_limp_mode_caps_throttle);
+    RUN_TEST(test_batt_filter_averages);
+
+    // Heading source tests (CS-3)
+    RUN_TEST(test_heading_source_thresholds);
+    RUN_TEST(test_heading_source_hysteresis_band);
+
+    // Thermal protection tests (layer 8)
+    RUN_TEST(test_temp_thresholds);
+    RUN_TEST(test_temp_kill_latches_until_75);
+    RUN_TEST(test_temp_derate_hysteresis);
+    RUN_TEST(test_temp_derate_caps_throttle);
+
+    // Anchor debounce tests (CS-11)
+    RUN_TEST(test_debounce_requires_3_packets);
+    RUN_TEST(test_debounce_rejects_noise);
+    RUN_TEST(test_debounce_release_also_debounced);
 
     UNITY_END();
     return 0;

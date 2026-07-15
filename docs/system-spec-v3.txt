@@ -117,7 +117,9 @@ Junction → GPIO34 (ADC1_CH6, input-only)
 0.1µF ceramic capacitor from junction to GND (noise filter)
 
 Firmware conversion: voltage = adc_raw * (120+30)/30 * 3.3 / 4095
-  Simplified: voltage = adc_raw * 0.01612
+  Simplified: voltage = adc_raw * 0.004029
+  (ERRATUM: earlier drafts said 0.01612 — that was the constant for the
+   wrong 100k/33k divider and is off by ~4x. Use 0.004029.)
 
 Hysteresis: cutoff at 10.5V, recovery at 11.5V (latched, requires manual re-arm)
 Low battery warning at 11.5V: throttle limited to 50% (limp mode)
